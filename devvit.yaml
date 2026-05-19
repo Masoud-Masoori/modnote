@@ -1,0 +1,29 @@
+name: modnote
+version: 0.1.0
+description: Every removal, explained — in one click. AI-drafted removal explanations for moderators.
+
+permissions:
+  http:
+    enabled: true
+    domains:
+      - api.anthropic.com
+  redditApi:
+    enabled: true
+  redis:
+    enabled: true
+  media:
+    enabled: false
+  realtime:
+    enabled: false
+
+# Listed in: Mod Tools, Productivity, Community Management
+categories:
+  - mod-tools
+  - productivity
+
+tagline: Every removal, explained.
+
+# Where the app surfaces:
+#  - Post menu action (mod-only): "Remove with ModNote"
+#  - Comment menu action (mod-only): "Remove with ModNote"
+#  - App settings page: API key, default tone, daily quota
