@@ -1,23 +1,32 @@
 {
   "name": "modnote",
   "version": "0.1.0",
-  "description": "Every removal, explained — AI-drafted removal explanations for Reddit moderators on Devvit.",
+  "description": "ModNote — AI removal-explanation composer for Reddit moderators on Devvit. Every removal, explained — in one click.",
   "license": "BSD-3-Clause",
   "private": true,
   "main": "src/main.tsx",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Masoud-Masoori/modnote.git"
+  },
   "scripts": {
     "dev": "devvit playtest",
     "build": "devvit build",
     "deploy": "devvit upload",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx"
+    "audit": "npm audit --omit=dev",
+    "ci-install": "npm ci"
   },
   "dependencies": {
-    "@devvit/public-api": "^0.11.0"
+    "@devvit/public-api": "0.12.24"
   },
   "devDependencies": {
-    "@devvit/tsconfig": "^0.11.0",
-    "@types/node": "^20.11.0",
-    "typescript": "^5.4.0"
-  }
+    "@devvit/tsconfig": "0.12.24",
+    "@types/node": "22.10.5",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "//": "Versions pinned exact (no ^ / ~ / latest) per the operator's npm safety policy in D:/Claude-Coworker/OPERATOR-PROFILE.md. Bump only after audit + 30d soak."
 }
