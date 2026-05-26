@@ -4,6 +4,7 @@
   "description": "ModNote — AI removal-explanation composer for Reddit moderators on Devvit. Every removal, explained — in one click.",
   "license": "BSD-3-Clause",
   "private": true,
+  "type": "module",
   "main": "src/main.tsx",
   "repository": {
     "type": "git",
@@ -11,7 +12,7 @@
   },
   "scripts": {
     "dev": "devvit playtest",
-    "build": "devvit build",
+    "build": "tsc --noEmit && echo 'Type check passed. Run `npm run deploy` to upload to Devvit.'",
     "deploy": "devvit upload",
     "typecheck": "tsc --noEmit",
     "audit": "npm audit --omit=dev",

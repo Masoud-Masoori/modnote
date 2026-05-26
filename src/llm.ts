@@ -5,9 +5,12 @@ const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
 
 export class LlmError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  override readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = 'LlmError';
+    this.cause = cause;
   }
 }
 

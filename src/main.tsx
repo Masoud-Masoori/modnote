@@ -1,7 +1,14 @@
 import { Devvit } from '@devvit/public-api';
-import type { Context, MenuItemOnPressEvent } from '@devvit/public-api';
+import type { Context, FormOnSubmitEvent, JSONObject, MenuItemOnPressEvent, Rule } from '@devvit/public-api';
 import { draftRemovalReplies, LlmError } from './llm.js';
 import type { DraftSet, RemovalContext, SubredditRule, Tone } from './types.js';
+
+interface ReviewFormData extends JSONObject {
+  [key: string]: import('@devvit/public-api').JSONValue;
+  drafts: DraftSet;
+  thingId: string;
+  thingType: 'post' | 'comment';
+}
 
 Devvit.configure({ redditAPI: true, redis: true, http: true });
 
@@ -52,8 +59,8 @@ async function loadRules(
   subredditName: string,
 ): Promise<SubredditRule[]> {
   try {
-    const rules = await context.reddit.getSubredditRulesByName(subredditName);
-    return rules.map((r) => ({
+    const rules = await context.reddit.getRules(subredditName);
+    return rules.map((r: Rule) => ({
       shortName: r.shortName ?? r.priority?.toString() ?? 'rule',
       description: r.description ?? r.descriptionHtml ?? '',
       violationReason: r.violationReason ?? undefined,
@@ -77,7 +84,9 @@ async function checkAndIncrementQuota(
 }
 
 const reviewForm = Devvit.createForm(
-  (data: { drafts: DraftSet; thingId: string; thingType: 'post' | 'comment' }) => {
+  (data) => {
+    const typed = data as unknown as ReviewFormData;
+    const drafts = typed.drafts;
     return {
       title: 'ModNote — pick a draft to send',
       acceptLabel: 'Remove and reply',
@@ -90,60 +99,49 @@ const reviewForm = Devvit.createForm(
           required: true,
           defaultValue: ['educational'],
           options: [
-            {
-              label: `Firm — cites "${data.drafts.firm.citedRule}"`,
-              value: 'firm',
-            },
-            {
-              label: `Educational — cites "${data.drafts.educational.citedRule}"`,
-              value: 'educational',
-            },
-            {
-              label: `Friendly — cites "${data.drafts.friendly.citedRule}"`,
-              value: 'friendly',
-            },
+            { label: `Firm — cites "${drafts.firm.citedRule}"`, value: 'firm' },
+            { label: `Educational — cites "${drafts.educational.citedRule}"`, value: 'educational' },
+            { label: `Friendly — cites "${drafts.friendly.citedRule}"`, value: 'friendly' },
           ],
         },
         {
           name: 'firmPreview',
           label: 'Firm draft',
           type: 'paragraph',
-          defaultValue: data.drafts.firm.text,
+          defaultValue: drafts.firm.text,
           helpText: 'Edit if needed. Only the selected tone will be sent.',
         },
         {
           name: 'educationalPreview',
           label: 'Educational draft',
           type: 'paragraph',
-          defaultValue: data.drafts.educational.text,
+          defaultValue: drafts.educational.text,
         },
         {
           name: 'friendlyPreview',
           label: 'Friendly draft',
           type: 'paragraph',
-          defaultValue: data.drafts.friendly.text,
+          defaultValue: drafts.friendly.text,
         },
-        { name: 'thingId', label: '', type: 'string', defaultValue: data.thingId },
-        {
-          name: 'thingType',
-          label: '',
-          type: 'string',
-          defaultValue: data.thingType,
-        },
+        { name: 'thingId', label: '', type: 'string', defaultValue: typed.thingId },
+        { name: 'thingType', label: '', type: 'string', defaultValue: typed.thingType },
       ],
-    };
+    } as const;
   },
-  async (event, context) => {
-    const tone = (event.values.tone?.[0] ?? 'educational') as Tone;
-    const thingId = event.values.thingId as string;
-    const thingType = event.values.thingType as 'post' | 'comment';
-    const draftKey = `${tone}Preview` as const;
-    let text = (event.values[draftKey] as string) ?? '';
+  async (event: FormOnSubmitEvent<JSONObject>, context: Context) => {
+    const toneRaw = event.values.tone;
+    const tone: Tone = (Array.isArray(toneRaw) ? toneRaw[0] : toneRaw) as Tone ?? 'educational';
+    const thingId = String(event.values.thingId ?? '');
+    const thingType = (event.values.thingType === 'comment' ? 'comment' : 'post') as 'post' | 'comment';
+    const draftKey = `${tone}Preview`;
+    let text = String(event.values[draftKey] ?? '');
 
     const append = await context.settings.get<boolean>('appendSignature');
     if (append) {
       const sub = await context.reddit.getSubredditById(context.subredditId);
-      text += `\n\n— mods of r/${sub.name}`;
+      if (sub) {
+        text += `\n\n— mods of r/${sub.name}`;
+      }
     }
 
     try {
@@ -216,7 +214,8 @@ async function handleRemoveWithModNote(
   }
 
   const sub = await context.reddit.getSubredditById(context.subredditId);
-  const rules = await loadRules(context, sub.name);
+  const subredditName = sub?.name ?? '';
+  const rules = subredditName ? await loadRules(context, subredditName) : [];
 
   const ctx: RemovalContext = {
     thingId: event.targetId,
@@ -224,7 +223,7 @@ async function handleRemoveWithModNote(
     title,
     body,
     authorName,
-    subredditName: sub.name,
+    subredditName,
     rules,
   };
 
@@ -241,11 +240,12 @@ async function handleRemoveWithModNote(
     return;
   }
 
-  context.ui.showForm(reviewForm, {
+  const formData: ReviewFormData = {
     drafts,
     thingId: event.targetId,
     thingType,
-  });
+  };
+  context.ui.showForm(reviewForm, formData);
 }
 
 Devvit.addMenuItem({
